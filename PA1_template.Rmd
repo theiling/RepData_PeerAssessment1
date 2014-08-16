@@ -1,0 +1,278 @@
+#Reproducible Research: Peer Assessment 1
+
+##Analysis of movement monitoring data
+
+##August 2014
+
+####Summary
+
+This exercise is an analysis of a set of movement monitoring data, where an anonymous individual's steps were recorded at five minute intervals throughout the day. For enhancing of my learning I included options with different graph packages and libraries.
+
+##Data
+
+Data Package is in the file: activity.csv. Original source of data: Activity monitoring data, which was afterwards manually unzipped.
+
+The variables included in this dataset are:
+
+* steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+* date: The date on which the measurement was taken in YYYY-MM-DD format
+* interval: Identifier for the 5-minute interval in which measurement was taken
+
+##Loading and preprocessing the data
+
+1) Load the data, show first lines output and dimension
+
+```{r echo=TRUE}
+#unzip("activity.zip")
+acData <- read.csv("activity.csv", header=TRUE)
+head(acData,5)
+dim(acData)[1]
+dim(acData)[2]
+````
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of **`r dim(acData)[1]`** observations and **`r dim(acData)[2]`** variables in this dataset.
+
+2) Process/transform the data to Class Date for analysis
+
+```{r echo=TRUE}
+acData$date <- as.Date(acData$date)
+````
+
+##What is mean total number of steps taken per day?
+
+1) A histogram of the total number of steps taken each day
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+acSum <- tapply(acData$steps, acData$date, sum, simplify = TRUE)
+hist(acSum, breaks=18, col="gray50", main = "Frequency of the total number of steps taken each day",
+     xlab = "Total number of steps per day")
+````
+
+2) Calculate and report the mean and median total number of steps taken per day
+
+mean of total number of steps taken per day - excluding NA values:
+
+```{r echo=TRUE}
+acMean <- mean(acSum, na.rm = TRUE); acMean
+````
+
+median of total number of steps taken per day - excluding NA values:
+```{r echo=TRUE}
+acMedian <- median(acSum, na.rm = TRUE); acMedian
+````
+
+##What is the average daily activity pattern?
+
+1) Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+First plot is a simple plot, the second plot has a more sophisticated x-axis.
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+acAverage <- tapply(acData$steps, acData$interval, mean, simplify = TRUE, na.rm = TRUE)
+
+plot(names(acAverage), acAverage, type = "l", col="blue", 
+     main = "Average number of steps of 5-minute interval, averaged across all days", 
+     xlab = "5 minute interval", 
+     ylab = "Average steps for 5-minute interval, across all days")
+
+#That's the second plot
+xLabel <- formatC(as.numeric(names(acAverage)), width=4, flag="0")
+xLabelstr <- paste0(substr(xLabel,1,2),":",substr(xLabel,3,4))
+xlabels <- as.numeric(substr(xLabel,1,2))+as.numeric(substr(xLabel,3,4))/60
+plot(xlabels, acAverage, type = "l", col="blue", 
+     main = "Average number of steps of 5-minute interval, averaged across all days", 
+     xlab = "5 minute interval", ylab = "Average steps for 5-minute interval, across all days", 
+     xaxt = "n")
+axis(1, xlabels, xLabelstr)
+````
+
+Other Option with __aggregate()__, which I tried for enhancing my learning
+
+Get summary stats for steps per day:
+Aggregate the data. . plot and summarize them . The output from summary() is good enough for the purposes.
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+dailySteps <- aggregate(acData$steps, 
+                        list(acData$date),
+                        function( x ){ sum( x, na.rm =TRUE)})
+names(dailySteps) <- c("Date", "x")
+head (dailySteps)
+hist(dailySteps$x, breaks = 16, col =' gray60',xlab = "Steps Per Day",
+     main = "Daily steps frequency analysis" )
+
+summary(dailySteps$x)
+```
+
+
+2) The 5-minute interval, on average across all the days in the dataset, which contains the maximum number of steps.
+
+
+```{r echo=TRUE}
+maxAve<-max(acAverage, na.rm = TRUE)
+x=names(acAverage)
+y=acAverage
+Ave = cbind(x,y)
+maxAsteps<-Ave[y == maxAve]
+```
+
+The 5-minute interval, on average across all the days in the dataset, which contains the maximum number of steps is at
+```{r echo=TRUE}
+maxAsteps[1]
+maxAsteps[2]
+```
+
+The mean maximum steps is `r maxAsteps[2]` and the 5-minute interval relates to the time `r maxAsteps[1]`.
+
+
+It is also easy to calculate daily average summary using the same general strategy as daily sums .
+
+```{r echo=TRUE}
+intervalStepsAvg <- aggregate(acData$steps, list(as.factor(acData$interval)),'mean', na.rm =TRUE)
+names(intervalStepsAvg) <- c("Period", "x")
+length(intervalStepsAvg$Period)
+head(intervalStepsAvg)
+````
+
+There are `r 60/5*24` five-minute periods in a day, and the result frame
+has `r length(intervalStepsAvg$Period)` rows.
+
+
+Plotting and analysing the results, 
+as before in a simple plot and in a second plot with a better x-axis .
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+plot(intervalStepsAvg$x, type='l', xlab = 'Interval', ylab = 'Steps',
+      main = 'Average no. of steps by 5-minute interval, averaged across all days')
+maxIntervalStep <- which.max(intervalStepsAvg$x)
+maxIntervalStep
+head(acData$interval, 10)
+
+#Use the more appropiate x-axis as before
+plot(xlabels, intervalStepsAvg$x, type = "l", col="blue", 
+     main = "Average number of steps of 5-minute interval, averaged across all days", 
+     xlab = "5 minute interval", 
+     ylab = "Average steps for 5-minute interval, across all days", 
+     xaxt = "n")
+axis(1, xlabels, xLabelstr)
+````
+
+
+Step **`r maxIntervalStep`** is `r (maxIntervalStep-1)*5/60` hours into the day. The graph looks quite credible i.e. almost no steps in the early morning.
+
+Interval **`r maxIntervalStep`** has the largest mean across each date in the dataset, 
+with a value of **`r max(intervalStepsAvg$x)`**.
+In the morning there is more activity, there might be a walk to work.
+
+
+## Inputing missing values
+
+There are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+1) Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r echo=TRUE}
+naSteps <- is.na(acData$steps)
+sum(naSteps)
+````
+
+Using the __is.na()__ function, there are `r sum(naSteps)` missing step counts.
+
+2) Create a new dataset that is equal to the original dataset but with the missing data filled in. Using mean to fill in all of the missing values in the dataset.
+
+```{r echo=TRUE}
+newData <- acData
+#Using the mean for that 5-minute interval to replace NA of that interval in each day.
+for (i in 1:length(acAverage)) {
+    newData[(is.na(newData$steps))&(newData$interval==names(acAverage)[i]),]$steps = acAverage[i]
+    }
+````
+
+
+3) Make a histogram of the total number of steps taken each day,calculate and report the mean and median total number of steps taken per day. Show the difference of the mean and median compared to the data with NA-values.
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+newsum <- tapply(newData$steps, newData$date, sum, simplify = TRUE)
+hist(newsum, breaks=18, col="red", 
+     main = "Frequency of the total number of steps taken each day - new", 
+     xlab = "Total number of steps per day")
+acMean2 <- mean(newsum, na.rm = TRUE); acMean2
+acMedian2 <- median(newsum, na.rm = TRUE); acMedian2
+acMean2 - acMean
+acMedian2 - acMedian
+acMean2-acMedian2
+#days with NA
+length(unique(newData$date[naSteps]))
+````
+
+
+The mean was used to fill in all of the missing values in the dataset. In the first part of the assignment, with the NA-values exluded, the mean was **`r round(acMean)`** and the median was **`r round(acMedian)`**.
+The mean remains **`r round(acMean2)`**, while the median has increased slightly to **`r round(acMedian2)`**. We had **`r length(unique(newData$date[naSteps]))`** days with NAs, but each of these days consisted of NA steps for each interval. So, by setting the NA interval to be the mean for that day, we are adding additional days with step values equal to the mean. Therefore, the mean remains unchanged, while the median is very slightly increased (by `r acMedian2 - acMedian`) and is equal to the mean; a coincidence due to adding numerous days with steps equal exactly to the mean. For the above results, inputing missing data on the estimates makes no difference of the total daily number of steps. Only the frequency of steps between 10000-11000 is higher than the first part of the assignment.
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+1) Create a new factor variable in the dataset with two levels weekday and weekend; indicating whether a given date is a weekday or weekend day.
+
+```{r echo=TRUE}
+#Set German weekdays to English weekdays.
+Sys.setlocale(locale = "C")
+## [1] "C"
+newData$day <- weekdays(newData$date, abbreviate = TRUE)
+newData$weekend <- ifelse((newData$day=="Sat")|(newData$day=="Sun"), c("weekend"), c("weekday"))
+# Easier than directly use factor in the ifelse part above
+newData$weekend <- factor(newData$weekend)
+````
+
+
+2) Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+2a) First with the lattice-library
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+library(lattice)
+acAverageWeek <- tapply(newData$steps, list(newData$interval,newData$weekend), mean, simplify = TRUE)
+xLabel <- formatC(as.numeric(rownames(acAverageWeek)), width=4, flag="0")
+xLabelstr <- paste0(substr(xLabel,1,2),":",substr(xLabel,3,4))
+xlabels <- as.numeric(substr(xLabel,1,2))*60 + as.numeric(substr(xLabel,3,4))
+avewd<-data.frame(ave = acAverageWeek[,1], interval = c(xlabels), weekend = rep("weekday",288))
+avewe<-data.frame(ave = acAverageWeek[,2], interval = c(xlabels), weekend = rep("weekend",288))
+avewk<-rbind(avewd,avewe)
+avewk <- transform(avewk, weekend = factor(weekend))
+xyplot(ave~interval|weekend, data = avewk, type="l", col="blue", layout=c(1,2), 
+       ylab="Average steps for 5-min interval")
+````
+
+2b) Other Option with plyr for easier summarizing the data
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+library(plyr)
+AvData <- ddply(newData, .(interval, weekend), summarize, mean=mean(steps))
+xyplot(AvData$mean~interval|weekend, data = AvData, type="l", col="blue", layout=c(1,2), 
+       ylab="Average steps for 5-min interval")
+````
+
+2c) Other Option with ggplot2 - Library
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r echo=TRUE, fig.width=11, fig.height=6}
+library(ggplot2)
+AvData <- ddply(newData, .(interval, weekend), summarize, mean=mean(steps))
+
+# For the time series plot, I want a variable that represents the number of minutes since midnight
+# The interval is a factor and there performing hour-minute concatenation (i.e. 835 => 08:35)
+minutes <- 60*floor(AvData$interval/100) + AvData$interval %% 100
+AvData <- cbind(AvData, minutes)
+
+# Plot mean steps by interval for Weekday and Weekend
+ggplot(AvData) +
+  geom_line(aes(minutes, mean)) +
+  facet_wrap(~weekend,nrow=2) +
+  xlab("Minute of day") + ylab("Mean number of steps")
+````
+
+There are some pretty obvious differences there:
+
+* Gets up later at weekends (kind of a slower start)  
+* Lower morning peak at weekends (possible no walk to work?)  
+* More walking during weekends steps throughout the day  
+* More late-night activity at weekends  
